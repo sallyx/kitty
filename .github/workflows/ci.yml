@@ -1,0 +1,26 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+    test:
+        name: Test on Linux (system-python)
+        runs-on: ubuntu-latest
+        container:
+            image: 'kovidgoyal/kitty-test:latest'
+            env:
+                CI: 'true'
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+
+            - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+            - run: python3 -m flake8 --count .
+            - run: python3 setup.py build --debug --verbose
+            - run: ./kitty/launcher/kitty +launch test.py
+            - run: make FAIL_WARN=-W man
+            - run: make FAIL_WARN=-W html
+
+
+
