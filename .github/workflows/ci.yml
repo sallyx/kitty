@@ -51,6 +51,7 @@ jobs:
 
     package:
         name: Linux package
+        runs-on: ubuntu-latest
         container:
             image: 'kovidgoyal/kitty-test:latest'
             env:
