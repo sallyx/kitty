@@ -104,7 +104,28 @@ jobs:
                 fetch-depth: 10
 
             - name: Build kitty
-              run: python3 .github/workflows/ci.py build
+              run: which python3 && python3 .github/workflows/ci.py build
 
             - name: Test kitty
               run: python3 .github/workflows/ci.py test
+
+    brew:
+        name: macOS Brew
+        runs-on: macos-latest
+        env:
+            LC_ALL: en_US.UTF-8
+            LANG: en_US.UTF-8
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                  fetch-depth: 10
+
+            - name: Install kitty deps
+              run: brew install $(cat Brewfile|grep -v "#")
+
+            - name: Build kitty
+              run: python .github/workflows/ci.py build
+
+            - name: Test kitty
+              run: python .github/workflows/ci.py test
