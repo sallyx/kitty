@@ -11,6 +11,7 @@ import tarfile
 from urllib.request import urlopen
 
 is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
+is_macos = 'darwin' in sys.platform.lower()
 SW = None
 
 
@@ -62,7 +63,7 @@ def replace_in_file(path, src, dest):
 
 def setup_bundle_env():
     global SW
-    os.environ['SW'] = SW = os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['SW'] = SW = '/Users/Shared/buildbot/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
     os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
     os.environ['PYTHONHOME'] = SW
@@ -73,18 +74,20 @@ def install_bundle():
     cwd = os.getcwd()
     os.makedirs(SW)
     os.chdir(SW)
-    with urlopen('https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz') as f:
+    with urlopen('https://download.calibre-ebook.com/travis/kitty/{}.tar.xz'.format(
+            'osx' if is_macos else 'linux-64')) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         tf.extractall()
-    replaced = 0
-    for dirpath, dirnames, filenames in os.walk('.'):
-        for f in filenames:
-            if f.endswith('.pc') or (f.endswith('.py') and f.startswith('_sysconfig')):
-                replace_in_file(os.path.join(dirpath, f), '/sw/sw', SW)
-                replaced += 1
-    if replaced < 2:
-        raise SystemExit('Failed to replace path to SW in bundle')
+    if not is_macos:
+        replaced = 0
+        for dirpath, dirnames, filenames in os.walk('.'):
+            for f in filenames:
+                if f.endswith('.pc') or (f.endswith('.py') and f.startswith('_sysconfig')):
+                    replace_in_file(os.path.join(dirpath, f), '/sw/sw', SW)
+                    replaced += 1
+        if replaced < 2:
+            raise SystemExit('Failed to replace path to SW in bundle')
     os.chdir(cwd)
 
 

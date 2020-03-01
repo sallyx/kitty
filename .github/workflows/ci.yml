@@ -87,11 +87,16 @@ jobs:
             - name: Build HTML docs
               run: make FAIL_WARN=-W html
 
-    linux-bundle:
-        name: Linux bundle
-        runs-on: ubuntu-latest
+    bundle:
+        name: Bundle test (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest]
         env:
             KITTY_BUNDLE: 1
+            LC_ALL: en_US.UTF-8
+            LANG: en_US.UTF-8
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
