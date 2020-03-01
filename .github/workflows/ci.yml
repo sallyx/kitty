@@ -2,13 +2,14 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-    test:
-        name: Test on Linux (system-python)
+    systemtest:
+        name: Linux (system-python)
         runs-on: ubuntu-latest
         container:
             image: 'kovidgoyal/kitty-test:latest'
             env:
                 CI: 'true'
+                CFLAGS: -funsigned-char
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
@@ -22,5 +23,37 @@ jobs:
             - run: make FAIL_WARN=-W man
             - run: make FAIL_WARN=-W html
 
+    pyvertest:
+        name: Linux (python-${{ matrix.python }})
+        runs-on: ubuntu-latest
+        matrix:
+            python: [3.5, 3.7, 3.8]
+            cc: [clang, gcc]
+        container:
+            image: 'kovidgoyal/kitty-test:latest'
+            env:
+                CI: 'true'
+                CC: ${{ matrix.cc }}
+                ASAN_OPTIONS: leak_check_at_exit=0
+                LD_LIBRARY_PATH: /opt/py${{ matrix.python }}/lib
 
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+            - run: /opt/py${{ matrix.python }}/bin/python3 setup.py build --debug --verbose --sanitize
+            - run: ./kitty/launcher/kitty +launch test.py
 
+    package:
+        name: Linux package
+        container:
+            image: 'kovidgoyal/kitty-test:latest'
+            env:
+                CI: 'true'
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+            - run: python3 setup.py linux-package --update-check-interval=0
