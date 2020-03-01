@@ -97,7 +97,8 @@ def main():
     if is_bundle:
         setup_bundle_env()
     else:
-        os.environ['LD_LIBRARY_PATH'] = '{}/lib'.format(os.environ['pythonLocation'])
+        if not is_macos:
+            os.environ['LD_LIBRARY_PATH'] = '{}/lib'.format(os.environ['pythonLocation'])
     action = sys.argv[-1]
     if action in ('build', 'package'):
         install_deps()
