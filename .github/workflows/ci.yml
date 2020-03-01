@@ -24,29 +24,42 @@ jobs:
             - run: make FAIL_WARN=-W html
 
     pyvertest:
-        name: Linux (python-${{ matrix.python }} cc-${{ matrix.cc }})
+        name: Linux (python-${{ matrix.pyver }} cc-${{ matrix.cc }})
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                python: [3.5, 3.7, 3.8]
-                cc: [gcc]
+                python: [a, b, c]
+                cc: [gcc, clang]
                 include:
-                    - python: 3.8
+                    - python: a
+                      pyver: '3.5'
+                    - python: b
+                      pyver: '3.7'
+                    - python: c
+                      pyver: '3.8'
+
+                exclude:
+                    - python: a
                       cc: clang
+                    - python: b
+                      cc: clang
+                    - python: c
+                      cc: gcc
+
         container:
             image: 'kovidgoyal/kitty-test:latest'
             env:
                 CI: 'true'
                 CC: ${{ matrix.cc }}
                 ASAN_OPTIONS: leak_check_at_exit=0
-                LD_LIBRARY_PATH: /opt/py${{ matrix.python }}/lib
+                LD_LIBRARY_PATH: /opt/py${{ matrix.pyver }}/lib
 
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
               with:
                 fetch-depth: 10
-            - run: /opt/py${{ matrix.python }}/bin/python3 setup.py build --debug --verbose --sanitize
+            - run: /opt/py${{ matrix.pyver }}/bin/python3 setup.py build --debug --verbose --sanitize
             - run: ./kitty/launcher/kitty +launch test.py
 
     package:
