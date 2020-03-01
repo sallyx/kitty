@@ -2,16 +2,23 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import io
 import os
 import shlex
 import subprocess
 import sys
+import tarfile
+from urllib.request import urlopen
+
+is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
+SW = None
 
 
 def run(*a):
     if len(a) == 1:
         a = shlex.split(a[0])
     print(' '.join(map(shlex.quote, a)))
+    sys.stdout.flush()
     ret = subprocess.Popen(a).wait()
     if ret != 0:
         raise SystemExit(ret)
@@ -19,18 +26,22 @@ def run(*a):
 
 def install_deps():
     print('Installing kitty dependencies...')
-    run('apt-get update')
-    run('apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev'
+    sys.stdout.flush()
+    run('sudo apt-get update')
+    run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev'
         ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev'
         ' libpng-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev')
-    run('pip install Pillow flake8 pygments')
+    if is_bundle:
+        install_bundle()
+    else:
+        run('pip install Pillow pygments')
 
 
 def build_kitty():
-    cmd = 'python setup.py build --debug --verbose'
-    if 'KITTY_SANITIZE' in os.environ:
-        cmd += ' --sanitize'
-        os.environ['ASAN_OPTIONS'] = 'leak_check_at_exit=0'
+    python = 'python3' if is_bundle else sys.executable
+    cmd = '{} setup.py build --verbose'.format(python)
+    if os.environ.get('KITTY_SANITIZE') == '1':
+        cmd += ' --debug --sanitize'
     run(cmd)
 
 
@@ -42,7 +53,46 @@ def package_kitty():
     run('python setup.py linux-package --update-check-interval=0')
 
 
+def replace_in_file(path, src, dest):
+    with open(path, 'r+') as f:
+        n = f.read().replace(src, dest)
+        f.seek(0), f.truncate()
+        f.write(n)
+
+
+def setup_bundle_env():
+    global SW
+    os.environ['SW'] = SW = os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
+    os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
+    os.environ['PYTHONHOME'] = SW
+    os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
+
+
+def install_bundle():
+    cwd = os.getcwd()
+    os.makedirs(SW)
+    os.chdir(SW)
+    with urlopen('https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz') as f:
+        data = f.read()
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
+        tf.extractall()
+    replaced = 0
+    for dirpath, dirnames, filenames in os.walk('.'):
+        for f in filenames:
+            if f.endswith('.pc') or (f.endswith('.py') and f.startswith('_sysconfig')):
+                replace_in_file(os.path.join(dirpath, f), '/sw/sw', SW)
+                replaced += 1
+    if replaced < 2:
+        raise SystemExit('Failed to replace path to SW in bundle')
+    os.chdir(cwd)
+
+
 def main():
+    if is_bundle:
+        setup_bundle_env()
+    else:
+        os.environ['LD_LIBRARY_PATH'] = '{}/lib'.format(os.environ['pythonLocation'])
     action = sys.argv[-1]
     if action in ('build', 'package'):
         install_deps()
