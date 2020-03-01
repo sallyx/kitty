@@ -67,7 +67,8 @@ def setup_bundle_env():
     os.environ['SW'] = SW = '/Users/Shared/buildbot/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
     os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
-    os.environ['PYTHONHOME'] = SW
+    if not is_macos:
+        os.environ['PYTHONHOME'] = SW
     os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
 
 
