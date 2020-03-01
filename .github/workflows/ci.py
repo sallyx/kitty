@@ -55,9 +55,10 @@ def test_kitty():
 
 
 def package_kitty():
-    run('python setup.py linux-package --update-check-interval=0 --verbose')
+    py = 'python3' if is_macos else 'python'
+    run(py + ' setup.py linux-package --update-check-interval=0 --verbose')
     if is_macos:
-        run('python setup.py kitty.app --update-check-interval=0 --verbose')
+        run('python3 setup.py kitty.app --update-check-interval=0 --verbose')
         run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
 
 
