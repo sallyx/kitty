@@ -3,6 +3,8 @@ on: [push, pull_request]
 env:
     CI: 'true'
     ASAN_OPTIONS: leak_check_at_exit=0
+    LC_ALL: en_US.UTF-8
+    LANG: en_US.UTF-8
 
 jobs:
     linux:
@@ -95,8 +97,6 @@ jobs:
                 os: [ubuntu-latest, macos-latest]
         env:
             KITTY_BUNDLE: 1
-            LC_ALL: en_US.UTF-8
-            LANG: en_US.UTF-8
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
@@ -112,9 +112,6 @@ jobs:
     brew:
         name: macOS Brew
         runs-on: macos-latest
-        env:
-            LC_ALL: en_US.UTF-8
-            LANG: en_US.UTF-8
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
