@@ -125,4 +125,4 @@ jobs:
               run: python3 .github/workflows/ci.py test
 
             - name: Build kitty package
-              run: python .github/workflows/ci.py package
+              run: python3 .github/workflows/ci.py package
