@@ -2,29 +2,8 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-    systemtest:
-        name: Linux (system-python)
-        runs-on: ubuntu-latest
-        container:
-            image: 'kovidgoyal/kitty-test:latest'
-            env:
-                CI: 'true'
-                CFLAGS: -funsigned-char
-        steps:
-            - name: Checkout source code
-              uses: actions/checkout@master
-              with:
-                fetch-depth: 10
-
-            - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
-            - run: python3 -m flake8 --count .
-            - run: python3 setup.py build --debug --verbose
-            - run: ./kitty/launcher/kitty +launch test.py
-            - run: make FAIL_WARN=-W man
-            - run: make FAIL_WARN=-W html
-
-    pyvertest:
-        name: Linux (python-${{ matrix.pyver }} cc-${{ matrix.cc }})
+    linux:
+        name: Linux (python=${{ matrix.pyver }} cc=${{ matrix.cc }} sanitize=${{ matrix.sanitize }})
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -32,11 +11,17 @@ jobs:
                 cc: [gcc, clang]
                 include:
                     - python: a
-                      pyver: '3.5'
+                      pyver: 3.5
+                      sanitize: 0
+
                     - python: b
-                      pyver: '3.7'
+                      pyver: 3.7
+                      sanitize: 1
+
                     - python: c
-                      pyver: '3.8'
+                      pyver: 3.8
+                      sanitize: 1
+
 
                 exclude:
                     - python: a
@@ -46,32 +31,53 @@ jobs:
                     - python: c
                       cc: gcc
 
-        container:
-            image: 'kovidgoyal/kitty-test:latest'
             env:
                 CI: 'true'
                 CC: ${{ matrix.cc }}
-                ASAN_OPTIONS: leak_check_at_exit=0
-                LD_LIBRARY_PATH: /opt/py${{ matrix.pyver }}/lib
+                KITTY_SANITIZE: ${{ matrix.sanitize }}
 
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
               with:
                 fetch-depth: 10
-            - run: /opt/py${{ matrix.pyver }}/bin/python3 setup.py build --debug --verbose --sanitize
-            - run: ./kitty/launcher/kitty +launch test.py
+            - name: Set up Python ${{ matrix.pyver }}
+              uses: actions/setup-python@master
+              with:
+                python-version: ${{ matrix.pyver }}
 
-    package:
+            - name: Build kitty
+              run: python .github/workflows/ci.py build
+
+            - name: Test kitty
+              run: python .github/workflows/ci.py test
+
+    linux-package:
         name: Linux package
         runs-on: ubuntu-latest
-        container:
-            image: 'kovidgoyal/kitty-test:latest'
             env:
                 CI: 'true'
+                CFLAGS: -funsigned-char
         steps:
             - name: Checkout source code
               uses: actions/checkout@master
               with:
                 fetch-depth: 10
-            - run: python3 setup.py linux-package --update-check-interval=0
+
+            - name: Test for trailing whitespace
+              run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+
+            - name: Set up Python
+              uses: actions/setup-python@master
+              with:
+                python-version: 3.8
+
+            - name: Check python code
+              run: python -m flake8 --count .
+
+            - name: Build kitty package
+              run: python .github/workflows/ci.py package
+
+            - name: Build kitty docs
+              run: make FAIL_WARN=-W man
+              run: make FAIL_WARN=-W html
