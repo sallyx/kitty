@@ -121,11 +121,11 @@ jobs:
               with:
                   fetch-depth: 10
 
-            - name: Install kitty deps
-              run: brew install $(cat Brewfile|grep -v "#")
-
             - name: Build kitty
               run: python3 .github/workflows/ci.py build
 
             - name: Test kitty
               run: python3 .github/workflows/ci.py test
+
+            - name: Build kitty package
+              run: python .github/workflows/ci.py package

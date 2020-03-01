@@ -28,7 +28,10 @@ def run(*a):
 def install_deps():
     print('Installing kitty dependencies...')
     sys.stdout.flush()
-    if not is_macos:
+    if is_macos:
+        items = (x.strip() for x in open('Brewfile').readlines() if not x.startswith('#'))
+        run('brew', 'install', *items)
+    else:
         run('sudo apt-get update')
         run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev'
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev'
@@ -52,7 +55,10 @@ def test_kitty():
 
 
 def package_kitty():
-    run('python setup.py linux-package --update-check-interval=0')
+    run('python setup.py linux-package --update-check-interval=0 --verbose')
+    if is_macos:
+        run('python setup.py kitty.app --update-check-interval=0 --verbose')
+        run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
 
 
 def replace_in_file(path, src, dest):
@@ -65,9 +71,11 @@ def replace_in_file(path, src, dest):
 def setup_bundle_env():
     global SW
     os.environ['SW'] = SW = '/Users/Shared/buildbot/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
-    os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
     os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
-    if not is_macos:
+    if is_macos:
+        os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
+    else:
+        os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
         os.environ['PYTHONHOME'] = SW
     os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
 
