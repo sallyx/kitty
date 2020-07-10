@@ -54,8 +54,9 @@ In C:
 
 .. code-block:: c
 
-    struct ttysize ts;
-    ioctl(0, TIOCGWINSZ, &ts);
+    #include <sys/ioctl.h>
+    struct winsize sz;
+    ioctl(0, TIOCGWINSZ, &sz);
     printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
 
 In Python:
